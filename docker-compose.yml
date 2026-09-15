@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  # Web Frontend & Node Express Ingress Service
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/geodiscover
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+
+  # Python FastAPI Microservice & Scraper Engine
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/geodiscover
+      - REDIS_URL=redis://redis:6379/0
+      - PLACES_API_KEY=${PLACES_API_KEY:-}
+      - MAPS_API_KEY=${MAPS_API_KEY:-}
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+
+  # Celery Background Distributed Scraper Worker
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A app.tasks.celery_app worker --loglevel=info -c 4
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/geodiscover
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+
+  # PostgreSQL Database with PostGIS Geospatial Extension
+  postgres:
+    image: postgis/postgis:15-3.3
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=geodiscover
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/migrations/init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+
+  # Redis In-Memory Cache & Task Broker
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:

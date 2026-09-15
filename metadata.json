@@ -1,0 +1,6 @@
+{
+  "name": "GeoDiscover - Area Company & Hospital Discovery",
+  "description": "Area-based discovery and verification platform for genuine companies and hospitals with geographic resolution, multi-source validation, interactive mapping, and data exports.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
